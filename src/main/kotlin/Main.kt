@@ -6,16 +6,16 @@ import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
 fun main(args: Array<String>) {
-    val yahooRouteInfoParser = YahooRouteInfoParser()
+    val yahooRouteInfoGetter = YahooRouteInfoGetter()
 
-    for (station in yahooRouteInfoParser.getStationList("大阪")){
-        for(direction in yahooRouteInfoParser.getDirectionFromUrl(station.value)){
-            yahooRouteInfoParser.getTimeTableInfo(direction.value)
+    for (station in yahooRouteInfoGetter.getStationList("大阪")){
+        for(direction in yahooRouteInfoGetter.getDirectionFromUrl(station.value)){
+            yahooRouteInfoGetter.getTimeTableInfo(direction.value)
             break
         }
         break
     }
-    //yahooRouteInfoParser.getTimeTableInfo("https://transit.yahoo.co.jp/station/time/25853/?kind=1&gid=7190&q=%E5%A4%A7%E9%98%AA&tab=time&done=time")
+    //yahooRouteInfoGetter.getTimeTableInfo("https://transit.yahoo.co.jp/station/time/25853/?kind=1&gid=7190&q=%E5%A4%A7%E9%98%AA&tab=time&done=time")
 }
 
 fun getDataAsync(requestUrl: String) {
@@ -32,7 +32,7 @@ fun getDataAsync(requestUrl: String) {
     getAsync.join()
 }
 
-class YahooRouteInfoParser {
+class YahooRouteInfoGetter {
 
     /**
      * 時刻情報
