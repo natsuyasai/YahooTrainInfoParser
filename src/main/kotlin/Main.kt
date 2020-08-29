@@ -2,6 +2,8 @@ import com.github.kittinunf.fuel.core.isSuccessful
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.result.Result
 import org.jsoup.Jsoup
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 fun main(args: Array<String>) {
     val yahooRouteInfoParser = YahooRouteInfoParser()
@@ -46,6 +48,11 @@ class YahooRouteInfoParser {
 
     // キー分割文字
     private val KEY_DELIMITER_STR = "///"
+
+    // リクエスト総数
+    private var _totalRequestCount = 0
+    // 前回のリクエスト実施時刻
+    private var _prevRequestDatetime = LocalTime.now()
 
     /**
      * 駅リスト取得
@@ -247,6 +254,7 @@ class YahooRouteInfoParser {
     private fun getHTMLDocument(url: String): org.jsoup.nodes.Document? {
         var retryCount = 0
         do {
+            tryWait()
             val syncResponse = url.httpGet().response()
             if (syncResponse.second.isSuccessful) {
                 return Jsoup.parse(String(syncResponse.second.data))
@@ -259,5 +267,23 @@ class YahooRouteInfoParser {
             }
         } while (retryCount <= 10)
         return null
+    }
+
+    /**
+     * 待ち試し
+     */
+    private fun tryWait() {
+        // 一定時間経過していればリセット
+        if(_totalRequestCount != 0 && ChronoUnit.SECONDS.between(_prevRequestDatetime, LocalTime.now()) > 30) {
+            _totalRequestCount = 0
+        }
+        // 一定期間未満かつ2回目以降のリクエストなら少し待つ
+        if(_totalRequestCount > 0) {
+            Thread.sleep(500)
+            // android
+            //Handler().postDelayed({}, 500)
+        }
+        _totalRequestCount++
+        _prevRequestDatetime = LocalTime.now()
     }
 }
