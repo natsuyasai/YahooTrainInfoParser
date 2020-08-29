@@ -1,3 +1,4 @@
+import com.github.kittinunf.fuel.core.FuelManager
 import com.github.kittinunf.fuel.core.isSuccessful
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.result.Result
@@ -8,13 +9,13 @@ import java.time.temporal.ChronoUnit
 fun main(args: Array<String>) {
     val yahooRouteInfoGetter = YahooRouteInfoGetter()
 
-    for (station in yahooRouteInfoGetter.getStationList("大阪")){
-        for(direction in yahooRouteInfoGetter.getDirectionFromUrl(station.value)){
-            yahooRouteInfoGetter.getTimeTableInfo(direction.value)
-            break
-        }
-        break
-    }
+//    for (station in yahooRouteInfoGetter.getStationList("大阪")){
+//        for(direction in yahooRouteInfoGetter.getDirectionFromUrl(station.value)){
+//            yahooRouteInfoGetter.getTimeTableInfo(direction.value)
+//            break
+//        }
+//        break
+//    }
     //yahooRouteInfoGetter.getTimeTableInfo("https://transit.yahoo.co.jp/station/time/25853/?kind=1&gid=7190&q=%E5%A4%A7%E9%98%AA&tab=time&done=time")
 }
 
@@ -31,28 +32,34 @@ fun getDataAsync(requestUrl: String) {
     }
     getAsync.join()
 }
-
 class YahooRouteInfoGetter {
 
     /**
      * 時刻情報
      */
     data class TimeInfo (
-        var time: String = "-1",
-        var type: String = "取得失敗",
-        var direction: String = "取得失敗"
+            // 時刻(HH:MM)
+            var time: String = "-1",
+            // 種別(普通，快速，etc...)
+            var type: String = "取得失敗",
+            // 行先
+            var direction: String = "取得失敗"
     )
 
     // 路線検索URLベース部分
     private val YAHOO_ROUTE_SEARCH_BASE_URL = "https://transit.yahoo.co.jp"
 
     // キー分割文字
-    private val KEY_DELIMITER_STR = "///"
+    private val KEY_DELIMITER_STR = "::"
 
     // リクエスト総数
     private var _totalRequestCount = 0
     // 前回のリクエスト実施時刻
     private var _prevRequestDatetime = LocalTime.now()
+
+    init {
+        FuelManager.instance.baseHeaders = mapOf("User-Agent" to "Mozilla/5.0 (twitter:@natsuyasai7)")
+    }
 
     /**
      * 駅リスト取得
@@ -111,9 +118,11 @@ class YahooRouteInfoGetter {
             val routeNameElements = element.select("dl > dt")
             val linkElements = element.select("li > a")
             if (routeNameElements.size > 0 && linkElements.size > 0) {
-                // 路線名，行先をキーとする
-                val key = routeNameElements[0].text() + KEY_DELIMITER_STR + linkElements[0].text()
-                directionList[key] = YAHOO_ROUTE_SEARCH_BASE_URL + linkElements.attr("href").toString()
+                for (linkElement in linkElements){
+                    // 路線名，行先をキーとする
+                    val key = routeNameElements[0].text() + KEY_DELIMITER_STR + linkElement.text()
+                    directionList[key] = YAHOO_ROUTE_SEARCH_BASE_URL + linkElement.attr("href").toString()
+                }
             }
         }
         return directionList
@@ -134,7 +143,7 @@ class YahooRouteInfoGetter {
 
     /**
      * 時刻表情報取得
-     * @param timeTableUrl 時刻表ページURL
+     * @param timeTableUrl 時刻表ページURL(平日分)
      * @return 時刻データ([平日データリスト,土曜データリスト,日曜・祝日データリスト])
      */
     fun getTimeTableInfo(timeTableUrl: String): List<List<TimeInfo>> {
@@ -262,8 +271,6 @@ class YahooRouteInfoGetter {
             else{
                 retryCount++
                 Thread.sleep(1000)
-                // android
-                //Handler().postDelayed({}, 1000)
             }
         } while (retryCount <= 10)
         return null
@@ -280,8 +287,6 @@ class YahooRouteInfoGetter {
         // 一定期間未満かつ2回目以降のリクエストなら少し待つ
         if(_totalRequestCount > 0) {
             Thread.sleep(500)
-            // android
-            //Handler().postDelayed({}, 500)
         }
         _totalRequestCount++
         _prevRequestDatetime = LocalTime.now()
